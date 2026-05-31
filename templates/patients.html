@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DermAI — Patients</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .search-wrap { position: relative; }
+    .search-wrap svg { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none; }
+    .search-wrap input { padding-left: 38px; }
+    .row-in { animation: rowSlide 0.35s ease both; }
+    @keyframes rowSlide { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+    .empty-state { text-align:center; padding:64px 24px; }
+    .empty-icon  { font-size:3rem; margin-bottom:16px; display:block; opacity:0.35; }
+  </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <nav class="navbar">
+    <a href="/dashboard" class="navbar-brand">
+      <div class="brand-mark">🔬</div>
+      <div>
+        <span class="brand-name">DermAI</span>
+        <span class="brand-tagline"> — Diagnostics dermatologiques</span>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <a href="/predict"   class="nav-link">Nouvelle analyse</a>
+      <a href="/patients"  class="nav-link active">Patients</a>
+      <a href="/logout"    class="nav-link logout">Déconnexion</a>
+    </div>
+  </nav>
+
+  <div class="page-content">
+
+    <!-- Header -->
+    <div class="page-header flex-between">
+      <div>
+        <h1 class="page-title">Dossiers patients</h1>
+        <p class="page-sub">{{ patients|length }} analyse{% if patients|length > 1 %}s{% endif %} enregistrée{% if patients|length > 1 %}s{% endif %} dans la base de données.</p>
+      </div>
+      <div class="flex-gap">
+        <div class="search-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="form-input" id="searchInput" type="text"
+                 placeholder="Rechercher un patient…"
+                 oninput="filterTable()" style="width:220px;">
+        </div>
+        <a href="/predict" class="btn btn-primary">+ Nouvelle analyse</a>
+      </div>
+    </div>
+
+    <!-- Summary chips -->
+    <div class="flex-gap" style="margin-bottom:24px;">
+      <div style="padding:8px 16px;background:var(--surface);border:1px solid var(--border-soft);border-radius:99px;font-size:0.85rem;box-shadow:var(--shadow-sm);">
+        Total : <strong id="visibleCount">{{ patients|length }}</strong>
+      </div>
+      <div style="padding:8px 16px;background:var(--danger-lt);border:1px solid #ecd9d9;border-radius:99px;font-size:0.85rem;color:var(--danger);">
+        Malins : <strong>{{ patients | selectattr('result','equalto','Malignant') | list | length }}</strong>
+      </div>
+      <div style="padding:8px 16px;background:var(--success-lt);border:1px solid #c5e0d1;border-radius:99px;font-size:0.85rem;color:var(--success);">
+        Bénins : <strong>{{ patients | selectattr('result','equalto','Benign') | list | length }}</strong>
+      </div>
+    </div>
+
+    <!-- Table card -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      {% if patients %}
+      <div class="data-table-wrap">
+        <table class="data-table" id="patientsTable">
+          <thead>
+            <tr>
+              <th style="width:40px;">#</th>
+              <th>Patient</th>
+              <th>Âge</th>
+              <th>Diagnostic</th>
+              <th>Confiance</th>
+              <th>Image</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in patients %}
+            <tr class="row-in" style="animation-delay:{{ loop.index * 0.03 }}s;">
+              <td style="color:var(--text-muted);font-size:0.8rem;font-weight:500;">{{ loop.index }}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div class="avatar">{{ p['name'][0]|upper }}</div>
+                  <span style="font-weight:600;color:var(--text);">{{ p['name'] }}</span>
+                </div>
+              </td>
+              <td style="color:var(--text-2);">{{ p['age'] }} ans</td>
+              <td>
+                <span class="badge {% if p['result'] == 'Malignant' %}badge-danger{% else %}badge-success{% endif %}">
+                  {% if p['result'] == 'Malignant' %}Malin{% else %}Bénin{% endif %}
+                </span>
+              </td>
+              <td style="min-width:140px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div class="prob-bar" style="flex:1;">
+                    <div class="prob-fill {% if p['result'] == 'Malignant' %}danger{% else %}success{% endif %}"
+                         style="width:{{ (p['probability']*100)|round(0)|int }}%;"></div>
+                  </div>
+                  <span style="font-size:0.82rem;font-weight:600;color:{% if p['result']=='Malignant'%}var(--danger){% else %}var(--success){% endif %};white-space:nowrap;">
+                    {{ (p['probability']*100)|round(1) }}%
+                  </span>
+                </div>
+              </td>
+              <td>
+                <img src="{{ p['image_path'] }}" width="60" height="60"
+                     style="object-fit:cover;border-radius:8px;border:1px solid var(--border);" alt="Lésion">
+              </td>
+              <td style="color:var(--text-muted);font-size:0.84rem;white-space:nowrap;">{{ p['created_at'] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <span class="empty-icon">📂</span>
+        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:8px;color:var(--text);">Aucun dossier patient</h3>
+        <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:20px;">Effectuez une première analyse pour voir les dossiers ici.</p>
+        <a href="/predict" class="btn btn-primary">Lancer une analyse</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:20px;">
+      <a href="/dashboard" class="btn btn-ghost">← Retour au dashboard</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#patientsTable tbody tr');
+    let visible = 0;
+    rows.forEach(row => {
+      const name = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+      const show = name.includes(q);
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    document.getElementById('visibleCount').textContent = visible;
+  }
+</script>
+</body>
+</html>

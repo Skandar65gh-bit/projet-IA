@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DermAI — Résultat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+  <div class="page-wrapper">
+
+    <nav class="navbar">
+      <a href="/dashboard" class="navbar-brand">
+        <div class="brand-mark">🔬</div>
+        <div>
+          <span class="brand-name">DermAI</span>
+          <span class="brand-tagline"> — Diagnostics dermatologiques</span>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/predict" class="nav-link">Nouvelle analyse</a>
+        <a href="/patients" class="nav-link">Patients</a>
+        <a href="/logout" class="nav-link logout">Déconnexion</a>
+      </div>
+    </nav>
+
+    <div class="page-content" style="max-width:1000px;">
+
+      <div class="page-header">
+        <h1 class="page-title">Résultat du diagnostic</h1>
+        <p class="page-sub">Analyse complétée — voici le rapport généré par le modèle VGG-16.</p>
+      </div>
+
+      <!-- Images : originale + Grad-CAM -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+        <div class="card card-sm" style="text-align:center;">
+          <p class="section-label" style="margin-bottom:14px;">🖼️ Image originale</p>
+          <img src="{{ img }}" alt="Image originale"
+            style="width:100%;max-width:260px;border-radius:10px;border:1.5px solid var(--border);box-shadow:var(--shadow-md);">
+        </div>
+        <div class="card card-sm" style="text-align:center;">
+          <p class="section-label" style="margin-bottom:14px;">🔥 Zones analysées (Grad-CAM)</p>
+          <img src="{{ gradcam }}" alt="Grad-CAM"
+            style="width:100%;max-width:260px;border-radius:10px;border:1.5px solid var(--border);box-shadow:var(--shadow-md);">
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-top:10px;">
+            Rouge = zones très influentes · Bleu = zones peu influentes
+          </p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:18px;">
+
+        <!-- Verdict -->
+        <div class="result-verdict {% if result == 'Malignant' %}verdict-malignant{% else %}verdict-benign{% endif %}">
+          <div style="font-size:2.8rem;">{% if result == 'Malignant' %}⚠️{% else %}✅{% endif %}</div>
+          <div class="verdict-title">{{ result }}</div>
+          <div class="verdict-sub">Indice de confiance : <strong>{{ prob }}%</strong></div>
+          <div style="margin-top:16px;">
+            <div class="prob-bar" style="height:7px;">
+              <div class="prob-fill {% if result == 'Malignant' %}danger{% else %}success{% endif %}" id="confBar"
+                style="width:0%;transition:width 1.1s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interpretation -->
+        <div class="card card-sm">
+          <p class="section-label" style="margin-bottom:12px;">Interprétation clinique</p>
+          {% if result == 'Malignant' %}
+          <p style="font-size:0.93rem;color:var(--text-2);line-height:1.75;">
+            Le modèle a identifié des caractéristiques <strong style="color:var(--danger)">associées à une lésion
+              maligne</strong> dans cette image. Ces signes peuvent inclure une asymétrie marquée, des bords irréguliers
+            ou des variations de couleur atypiques.
+          </p>
+          <div
+            style="margin-top:14px;padding:13px 16px;background:var(--danger-lt);border:1px solid #ecd9d9;border-radius:var(--radius-sm);font-size:0.87rem;color:var(--danger);">
+            🏥 <strong>Recommandation :</strong> Une consultation dermatologique urgente est fortement conseillée pour
+            un examen clinique approfondi.
+          </div>
+          {% else %}
+          <p style="font-size:0.93rem;color:var(--text-2);line-height:1.75;">
+            Le modèle ne détecte pas de caractéristiques malignes dans cette image. La lésion présente des attributs
+            <strong style="color:var(--success)">compatibles avec une lésion bénigne</strong>.
+          </p>
+          <div
+            style="margin-top:14px;padding:13px 16px;background:var(--success-lt);border:1px solid #c5e0d1;border-radius:var(--radius-sm);font-size:0.87rem;color:var(--success);">
+            📅 <strong>Recommandation :</strong> Un suivi dermatologique régulier reste conseillé, même en l'absence de
+            signes malins.
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Disclaimer -->
+        <div
+          style="padding:13px 16px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:var(--radius-sm);font-size:0.82rem;color:var(--text-muted);line-height:1.6;">
+          ⚠️ Ce résultat est produit par un système d'aide à la décision automatisé. Il ne constitue pas un diagnostic
+          médical et ne remplace en aucun cas l'expertise d'un médecin spécialiste.
+        </div>
+
+        <!-- Actions -->
+        <div class="flex-gap">
+          <a href="/predict" class="btn btn-primary">Nouvelle analyse</a>
+          <a href="/patients" class="btn btn-ghost">Voir les patients</a>
+          <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    setTimeout(() => {
+      document.getElementById('confBar').style.width = '{{ prob }}%';
+    }, 250);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DermAI — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <nav class="navbar">
+    <a href="/dashboard" class="navbar-brand">
+      <div class="brand-mark">🔬</div>
+      <div>
+        <span class="brand-name">DermAI</span>
+        <span class="brand-tagline"> — Diagnostics dermatologiques</span>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link active">Dashboard</a>
+      <a href="/predict"   class="nav-link">Nouvelle analyse</a>
+      <a href="/patients"  class="nav-link">Patients</a>
+      <a href="/logout"    class="nav-link logout">Déconnexion</a>
+    </div>
+  </nav>
+
+  <div class="page-content">
+
+    <!-- Header -->
+    <div class="page-header flex-between">
+      <div>
+        <h1 class="page-title">Bonjour, {{ session['user'] }} 👋</h1>
+        <p class="page-sub">Voici un aperçu de l'activité du système aujourd'hui.</p>
+      </div>
+      <div style="font-size:0.85rem;color:var(--text-muted);">
+        <span id="clock"></span>
+      </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">
+          {% if cat == 'success' %}✓{% else %}⚠{% endif %} {{ msg }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-dot teal"></div>
+        <div class="stat-value" id="totalCount">—</div>
+        <div class="stat-label">Analyses réalisées</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-dot coral"></div>
+        <div class="stat-value" id="malignantCount">—</div>
+        <div class="stat-label">Cas malins détectés</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-dot green"></div>
+        <div class="stat-value" id="benignCount">—</div>
+        <div class="stat-label">Cas bénins</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-dot warm"></div>
+        <div class="stat-value" style="font-size:1.2rem;letter-spacing:-0.02em;">VGG-16</div>
+        <div class="stat-label">Modèle de classification</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <p class="section-label">Que voulez-vous faire ?</p>
+    <div class="action-grid">
+
+      <a href="/predict" class="action-card">
+        <div class="action-card-eyebrow">Analyse IA</div>
+        <div class="action-card-title">Analyser une lésion</div>
+        <div class="action-card-desc">Chargez une photo de lésion cutanée et obtenez un diagnostic automatique classifié Malin ou Bénin.</div>
+        <div class="action-arrow">Commencer →</div>
+      </a>
+
+      <a href="/patients" class="action-card">
+        <div class="action-card-eyebrow">Historique</div>
+        <div class="action-card-title">Voir les patients</div>
+        <div class="action-card-desc">Consultez l'ensemble des dossiers patients avec leurs résultats, probabilités et images archivées.</div>
+        <div class="action-arrow">Accéder →</div>
+      </a>
+
+      <div class="action-card" style="cursor:default;">
+        <div class="action-card-eyebrow">Performance du modèle</div>
+        <div class="action-card-title">Précision estimée</div>
+        <div class="action-card-desc">Modèle VGG-16 fine-tuné sur le dataset ISIC. Classification binaire : Malin / Bénin.</div>
+        <div style="margin-top:auto;padding-top:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">
+            <span>Précision de validation</span>
+            <span style="font-weight:600;color:var(--accent);">~92 %</span>
+          </div>
+          <div class="prob-bar">
+            <div class="prob-fill success" style="width:92%;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Notice -->
+    <div style="margin-top:32px;padding:16px 20px;background:var(--warning-lt);border:1px solid #e8d5a3;border-radius:var(--radius-sm);font-size:0.87rem;color:var(--warning);line-height:1.6;">
+      ⚠️ <strong>Rappel clinique :</strong> Les résultats fournis par ce système sont indicatifs et ne remplacent pas l'avis d'un dermatologue qualifié.
+    </div>
+  </div>
+</div>
+
+<script>
+  // Live clock
+  function tick() {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) +
+      ' · ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  }
+  tick(); setInterval(tick, 10000);
+
+  // Animated stats
+  async function loadStats() {
+    try {
+      const res = await fetch('/patients_data');
+      if (!res.ok) return;
+      const d = await res.json();
+      animateNumber('totalCount', d.total);
+      animateNumber('malignantCount', d.malignant);
+      animateNumber('benignCount', d.benign);
+    } catch(e) {}
+  }
+
+  function animateNumber(id, target) {
+    const el = document.getElementById(id);
+    if (target === 0) { el.textContent = '0'; return; }
+    let current = 0;
+    const step  = Math.max(1, Math.ceil(target / 25));
+    const t = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = current;
+      if (current >= target) clearInterval(t);
+    }, 45);
+  }
+
+  loadStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DermAI — Connexion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-outer">
+
+  <!-- Left panel — brand story -->
+  <div class="login-left">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px;">
+        <div style="width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">🔬</div>
+        <span style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;">DermAI</span>
+      </div>
+
+      <h1 class="login-left-title">
+        L'intelligence artificielle<br>au service de la<br>dermatologie
+      </h1>
+      <p class="login-left-desc">
+        Analysez les lésions cutanées en quelques secondes grâce à un modèle de deep learning entraîné sur des milliers de cas cliniques.
+      </p>
+
+      <div class="login-features">
+        <div class="login-feature">
+          <div class="login-feature-icon">⚡</div>
+          <div class="login-feature-text"><strong>Résultats immédiats</strong> — diagnostic en moins de 3 secondes</div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">🛡️</div>
+          <div class="login-feature-text"><strong>Données sécurisées</strong> — accès strictement contrôlé</div>
+        </div>
+        <div class="login-feature">
+          <div class="login-feature-icon">📋</div>
+          <div class="login-feature-text"><strong>Historique patients</strong> — suivi longitudinal intégré</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel — login form -->
+  <div class="login-right">
+    <div class="login-form-wrap">
+
+      <h2 class="login-form-title">Bon retour 👋</h2>
+      <p class="login-form-sub">Connectez-vous pour accéder à votre espace médical</p>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">
+            {% if cat == 'success' %}✓{% else %}⚠{% endif %} {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" id="loginForm" onsubmit="handleSubmit()">
+        <div class="form-group">
+          <label class="form-label" for="username">Nom d'utilisateur</label>
+          <input class="form-input" id="username" type="text" name="username"
+                 placeholder="votre.nom" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Mot de passe</label>
+          <input class="form-input" id="password" type="password" name="password"
+                 placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="loginBtn" style="margin-top:6px;padding:13px 22px;">
+          <span class="spinner" id="spinner"></span>
+          <span id="btnText">Se connecter</span>
+        </button>
+      </form>
+
+      <p style="margin-top:28px;font-size:0.8rem;color:var(--text-muted);line-height:1.6;border-top:1px solid var(--border-soft);padding-top:20px;">
+        🔒 Cet outil est réservé au personnel médical autorisé. Les données patients sont confidentielles et protégées.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function handleSubmit() {
+    const btn = document.getElementById('loginBtn');
+    const spin = document.getElementById('spinner');
+    const txt  = document.getElementById('btnText');
+    spin.style.display = 'block';
+    txt.textContent = 'Connexion en cours…';
+    btn.disabled = true;
+  }
+</script>
+</body>
+</html>

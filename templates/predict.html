@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DermAI — Nouvelle analyse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .analyzing-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(246,242,237,0.92);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 18px;
+    }
+    .analyzing-overlay.show { display: flex; }
+    .analyze-spinner {
+      width: 56px; height: 56px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Analyzing overlay -->
+<div class="analyzing-overlay" id="overlay">
+  <div class="analyze-spinner"></div>
+  <div>
+    <p style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--text);">Analyse en cours…</p>
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-top:6px;">Le modèle VGG-16 examine l'image, veuillez patienter.</p>
+  </div>
+</div>
+
+<div class="page-wrapper">
+
+  <nav class="navbar">
+    <a href="/dashboard" class="navbar-brand">
+      <div class="brand-mark">🔬</div>
+      <div>
+        <span class="brand-name">DermAI</span>
+        <span class="brand-tagline"> — Diagnostics dermatologiques</span>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <a href="/predict"   class="nav-link active">Nouvelle analyse</a>
+      <a href="/patients"  class="nav-link">Patients</a>
+      <a href="/logout"    class="nav-link logout">Déconnexion</a>
+    </div>
+  </nav>
+
+  <div class="page-content" style="max-width:780px;">
+
+    <div class="page-header">
+      <h1 class="page-title">Nouvelle analyse</h1>
+      <p class="page-sub">Renseignez les informations du patient et chargez une image de la lésion cutanée.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{% if cat=='success'%}✓{% else %}⚠{% endif %} {{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data" id="analyseForm" onsubmit="startAnalysis()">
+
+      <!-- Patient info -->
+      <div class="card" style="margin-bottom:20px;">
+        <p class="section-label" style="margin-bottom:20px;">Informations patient</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group mb-0">
+            <label class="form-label" for="name">Nom complet</label>
+            <input class="form-input" id="name" type="text" name="name" placeholder="Ex : Marie Dubois" required>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label" for="age">Âge</label>
+            <input class="form-input" id="age" type="number" name="age" placeholder="Ex : 47" min="1" max="120" required>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image upload -->
+      <div class="card" style="margin-bottom:20px;">
+        <p class="section-label" style="margin-bottom:20px;">Image de la lésion</p>
+
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" name="image" id="imageInput" accept=".png,.jpg,.jpeg" required onchange="onFileChange(this)">
+          <span class="upload-icon">📂</span>
+          <p class="upload-text"><strong>Cliquez ou glissez</strong> une image ici</p>
+          <p class="upload-text" style="font-size:0.82rem;margin-top:4px;color:var(--text-muted);">Formats acceptés : JPG, PNG — taille max 10 Mo</p>
+          <div class="upload-preview" id="previewWrap">
+            <img id="previewImg" src="" alt="Aperçu de la lésion" style="max-width:200px;border-radius:10px;border:2px solid var(--border);box-shadow:var(--shadow-md);">
+            <p id="fileName" style="font-size:0.82rem;color:var(--accent);margin-top:10px;font-weight:500;"></p>
+          </div>
+        </div>
+
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:14px;line-height:1.6;">
+          💡 Pour de meilleurs résultats, utilisez une photo nette, bien éclairée, centrée sur la lésion, idéalement sur fond neutre.
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex-gap">
+        <button type="submit" class="btn btn-primary" id="submitBtn" style="padding:13px 28px;">
+          <span class="spinner" id="spinner"></span>
+          <span id="btnText">Lancer l'analyse</span>
+        </button>
+        <a href="/dashboard" class="btn btn-ghost">← Retour</a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+  function onFileChange(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('previewWrap').style.display = 'block';
+      document.getElementById('fileName').textContent = '✓ ' + file.name;
+      document.querySelector('#uploadZone .upload-icon').textContent = '🖼️';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function startAnalysis() {
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', () => zone.classList.remove('drag-over'));
+</script>
+</body>
+</html>
